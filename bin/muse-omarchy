@@ -5,7 +5,6 @@
 #   muse-omarchy toggle              show or hide the Muse window, starting it if needed
 #   muse-omarchy set key "SUPER + M" bind the toggle to a key (empty string removes it)
 #   muse-omarchy set profile shared|isolated
-#   muse-omarchy set size 1100x800
 #   muse-omarchy show                print the current settings
 
 set -euo pipefail
@@ -13,14 +12,15 @@ set -euo pipefail
 URL="https://muse.ai/"
 # Chromium names an --app window after the URL: chrome-<host>__<path>-<profile>.
 CLASS_PATTERN='^chrome-muse\.ai__'
-WORKSPACE="special:muse"
+# Where the window waits while hidden. It is never shown there.
+HIDDEN="special:muse"
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/muse-omarchy"
 CONFIG="$CONFIG_DIR/config"
 PROFILE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/muse-omarchy/chromium-profile"
 
 usage() {
-  sed -n '3,9s/^# \{0,1\}//p' "$0"
+  sed -n '3,8s/^# \{0,1\}//p' "$0"
 }
 
 get() {
@@ -46,11 +46,12 @@ dispatch() {
 }
 
 toggle() {
-  local window address workspace
+  local window address workspace active current
+
   window=$(hyprctl clients -j | jq -c --arg p "$CLASS_PATTERN" '[.[] | select(.class | test($p))][0] // empty')
 
   if [[ -z $window ]]; then
-    # The window rule in hypr/muse.lua opens it on the Muse workspace and shows it.
+    # Opens as an ordinary tiled window on the current workspace.
     if [[ $(get profile shared) == isolated ]]; then
       mkdir -p "$PROFILE_DIR"
       exec omarchy-launch-webapp "$URL" "--user-data-dir=$PROFILE_DIR"
@@ -60,11 +61,17 @@ toggle() {
 
   address=$(jq -r '.address' <<<"$window")
   workspace=$(jq -r '.workspace.name' <<<"$window")
+  active=$(hyprctl activewindow -j | jq -r '.address // empty')
+  current=$(hyprctl activeworkspace -j | jq -r '.id')
 
-  if [[ $workspace == "$WORKSPACE" ]]; then
-    dispatch 'hl.dsp.workspace.toggle_special("muse")'
+  if [[ $workspace == "$HIDDEN" ]]; then
+    # Hidden: bring it to the workspace in view, where it tiles like any window.
+    dispatch "hl.dsp.window.move({ workspace = \"$current\", window = \"address:$address\" })"
+    dispatch "hl.dsp.focus({ window = \"address:$address\" })"
+  elif [[ $address == "$active" ]]; then
+    dispatch "hl.dsp.window.move({ workspace = \"$HIDDEN\", follow = false, window = \"address:$address\" })"
   else
-    # Moved onto a normal workspace by hand: leave it there and go to it.
+    # Open but not focused, perhaps on another workspace: go to it.
     dispatch "hl.dsp.focus({ window = \"address:$address\" })"
   fi
 }
@@ -84,9 +91,6 @@ set_option() {
     [[ $value == shared || $value == isolated ]] || { echo "profile must be 'shared' or 'isolated'" >&2; exit 1; }
     echo "Close the Muse window for the profile change to take effect." >&2
     ;;
-  size)
-    [[ $value =~ ^[0-9]+x[0-9]+$ ]] || { echo "size must look like 1100x800" >&2; exit 1; }
-    ;;
   *)
     usage >&2
     exit 1
@@ -94,7 +98,7 @@ set_option() {
   esac
 
   put "$name" "$value"
-  # The key and size are read by hypr/muse.lua when Hyprland loads its config.
+  # The key is read by hypr/muse.lua when Hyprland loads its config.
   hyprctl reload >/dev/null 2>&1 || true
 }
 
@@ -104,7 +108,6 @@ set) set_option "${2:-}" "${3-}" ;;
 show)
   echo "key     = $(get key '(none)')"
   echo "profile = $(get profile shared)"
-  echo "size    = $(get size 1100x800)"
   ;;
 *)
   usage

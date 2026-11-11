@@ -1,6 +1,6 @@
 # muse-omarchy
 
-Meta's [Muse](https://muse.ai) has no Linux app. This gives it a native-feeling home on Omarchy: its own floating window that you show and hide with one key, plus an entry in the app launcher.
+Meta's [Muse](https://muse.ai) has no Linux app. This gives it a native-feeling home on Omarchy: its own window that tiles like any other app and that you show and hide with one key, plus an entry in the app launcher.
 
 It is the real muse.ai site in a Chromium app window, signed in the normal way. Nothing is scraped or automated. See [PLAN.md](PLAN.md) for the reasoning and the options that were ruled out.
 
@@ -28,7 +28,6 @@ Other settings, stored in `~/.config/muse-omarchy/config`:
 
 ```sh
 muse-omarchy set profile isolated   # separate browser profile and sign-in; default is "shared"
-muse-omarchy set size 1100x800      # window size in pixels
 muse-omarchy show
 ```
 
@@ -36,5 +35,5 @@ A profile change applies the next time the Muse window is opened.
 
 ## How it works
 
-- `bin/muse-omarchy` launches muse.ai through `omarchy-launch-webapp` and toggles the `special:muse` workspace.
-- `hypr/muse.lua` is loaded from `~/.config/hypr/hyprland.lua`. It floats and centers the window on that workspace and binds your key, if you set one.
+- `bin/muse-omarchy` launches muse.ai through `omarchy-launch-webapp` as an ordinary tiled window. Toggling while Muse is focused parks it on a hidden workspace; toggling again brings it to the workspace you are on. If Muse is open but not focused, the toggle focuses it.
+- `hypr/muse.lua` is loaded from `~/.config/hypr/hyprland.lua` and binds your key, if you set one.

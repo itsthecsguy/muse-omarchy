@@ -1,6 +1,6 @@
--- Muse (muse.ai) as a floating toggle window on its own special workspace.
--- Installed to ~/.config/hypr/muse.lua by install.sh; settings come from
--- ~/.config/muse-omarchy/config, written by `muse-omarchy set`.
+-- Binds the user's key for Muse (muse.ai). The window itself needs no rules: it
+-- tiles like any other. Installed to ~/.config/hypr/muse.lua by install.sh; the
+-- key comes from ~/.config/muse-omarchy/config, written by `muse-omarchy set key`.
 
 local function settings()
   local values = {}
@@ -19,18 +19,8 @@ local function settings()
   return values
 end
 
-local config = settings()
-local width, height = (config.size or ""):match("^(%d+)x(%d+)$")
-
--- Not silent: a freshly launched Muse opens its workspace, so it shows at once.
-o.window("^chrome-muse\\.ai__.*$", {
-  workspace = "special:muse",
-  float = true,
-  center = true,
-  size = { tonumber(width) or 1100, tonumber(height) or 800 },
-})
-
 -- There is no default key: each user picks one with `muse-omarchy set key`.
-if config.key then
-  o.bind(config.key, "Muse", "muse-omarchy toggle")
+local key = settings().key
+if key then
+  o.bind(key, "Muse", "muse-omarchy toggle")
 end
