@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# Muse (muse.ai) as a toggle window on Omarchy.
+#
+#   muse-omarchy toggle              show or hide the Muse window, starting it if needed
+#   muse-omarchy set key "SUPER + M" bind the toggle to a key (empty string removes it)
+#   muse-omarchy set profile shared|isolated
+#   muse-omarchy set size 1100x800
+#   muse-omarchy show                print the current settings
+
+set -euo pipefail
+
+URL="https://muse.ai/"
+# Chromium names an --app window after the URL: chrome-<host>__<path>-<profile>.
+CLASS_PATTERN='^chrome-muse\.ai__'
+WORKSPACE="special:muse"
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/muse-omarchy"
+CONFIG="$CONFIG_DIR/config"
+PROFILE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/muse-omarchy/chromium-profile"
+
+usage() {
+  sed -n '3,9s/^# \{0,1\}//p' "$0"
+}
+
+get() {
+  local value=""
+  [[ -f $CONFIG ]] && value=$(sed -n "s/^$1[[:space:]]*=[[:space:]]*//p" "$CONFIG" | tail -n1)
+  printf '%s\n' "${value:-${2:-}}"
+}
+
+put() {
+  mkdir -p "$CONFIG_DIR"
+  touch "$CONFIG"
+  local rest
+  rest=$(grep -v "^$1[[:space:]]*=" "$CONFIG" || true)
+  {
+    [[ -n $rest ]] && printf '%s\n' "$rest"
+    printf '%s = %s\n' "$1" "$2"
+  } >"$CONFIG.tmp"
+  mv "$CONFIG.tmp" "$CONFIG"
+}
+
+dispatch() {
+  hyprctl dispatch "$1" >/dev/null
+}
+
+toggle() {
+  local window address workspace
+  window=$(hyprctl clients -j | jq -c --arg p "$CLASS_PATTERN" '[.[] | select(.class | test($p))][0] // empty')
+
+  if [[ -z $window ]]; then
+    # The window rule in hypr/muse.lua opens it on the Muse workspace and shows it.
+    if [[ $(get profile shared) == isolated ]]; then
+      mkdir -p "$PROFILE_DIR"
+      exec omarchy-launch-webapp "$URL" "--user-data-dir=$PROFILE_DIR"
+    fi
+    exec omarchy-launch-webapp "$URL"
+  fi
+
+  address=$(jq -r '.address' <<<"$window")
+  workspace=$(jq -r '.workspace.name' <<<"$window")
+
+  if [[ $workspace == "$WORKSPACE" ]]; then
+    dispatch 'hl.dsp.workspace.toggle_special("muse")'
+  else
+    # Moved onto a normal workspace by hand: leave it there and go to it.
+    dispatch "hl.dsp.focus({ window = \"address:$address\" })"
+  fi
+}
+
+set_option() {
+  local name="${1:-}" value="${2-}"
+
+  case $name in
+  key)
+    if [[ -n $value ]] && omarchy menu keybindings --print 2>/dev/null |
+      awk -F'→' '{ gsub(/[ +]+/, " ", $1); print toupper($1) }' |
+      grep -qxF "$(tr -s ' +' ' ' <<<"$value" | tr '[:lower:]' '[:upper:]') "; then
+      echo "Note: '$value' already has a binding; both will run. Check 'omarchy menu keybindings --print'." >&2
+    fi
+    ;;
+  profile)
+    [[ $value == shared || $value == isolated ]] || { echo "profile must be 'shared' or 'isolated'" >&2; exit 1; }
+    echo "Close the Muse window for the profile change to take effect." >&2
+    ;;
+  size)
+    [[ $value =~ ^[0-9]+x[0-9]+$ ]] || { echo "size must look like 1100x800" >&2; exit 1; }
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+  esac
+
+  put "$name" "$value"
+  # The key and size are read by hypr/muse.lua when Hyprland loads its config.
+  hyprctl reload >/dev/null 2>&1 || true
+}
+
+case ${1:-} in
+toggle) toggle ;;
+set) set_option "${2:-}" "${3-}" ;;
+show)
+  echo "key     = $(get key '(none)')"
+  echo "profile = $(get profile shared)"
+  echo "size    = $(get size 1100x800)"
+  ;;
+*)
+  usage
+  [[ ${1:-} == -h || ${1:-} == --help ]] || exit 1
+  ;;
+esac
