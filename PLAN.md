@@ -76,12 +76,16 @@ Answered: Muse is Meta's agent; Nick has a paid subscription; he is in the US, s
 
 Since Nick wants the Muse app itself (the agent, with his account and history), the web app in phase 1 is the real answer on Linux. Phase 2 is a side tool at most, because the API is billed per token separately from the subscription and does not reach his agent account.
 
+Decided by Nick:
+
+- **Keybind:** set per user, with no default shipped.
+- **Window:** a toggle window (shown and hidden with one action), not a fixed workspace.
+- **Profile:** shares the main Chromium profile by default, with an option to use an isolated profile.
+
 Still open:
 
-1. Preferred keybind, and window behaviour: fixed workspace, or floating toggle?
-2. Should Muse share the main Chromium profile, or get an isolated profile (cleaner separation, one extra sign-in)?
-3. Is a one-shot quick prompt (phase 2) wanted at all, given it costs extra per token and is not the agent?
-4. Is Muse Code of interest, given it may be billed separately?
+1. Is a one-shot quick prompt (phase 2) wanted at all, given it costs extra per token and is not the agent?
+2. Is Muse Code of interest, given it may be billed separately?
 
 ## 5. To verify before implementing
 
