@@ -1,6 +1,6 @@
 # A native-feeling Muse on Omarchy: plan
 
-Status: planning only, nothing implemented. Researched 2026-11-10.
+Status: planning only, nothing implemented. Researched 2026-11-10. Nick confirmed the same day: Muse is Meta's agent (the same product as the Mac, Android and iOS apps), he is on a paid subscription, and he is in the US.
 
 ## Recommendation in brief
 
@@ -11,7 +11,7 @@ Status: planning only, nothing implemented. Researched 2026-11-10.
 
 ## 1. What "Muse" is
 
-**Best fit: Meta's Muse, the personal AI agent at <https://muse.ai>.** Nick should confirm (see open questions).
+**Confirmed by Nick: Meta's Muse, the personal AI agent at <https://muse.ai>.** It is the same product as the Mac, Android and iOS apps; Linux is the gap.
 
 | Aspect | Finding | How sure |
 |---|---|---|
@@ -29,13 +29,12 @@ Status: planning only, nothing implemented. Researched 2026-11-10.
 
 For comparison, Grok Bot on this machine is a real packaged app (`grok-bot 0.79.3-1`, Electron-style dependencies, its own URL scheme). Muse has no equivalent package for Linux.
 
-### Other things called Muse (less likely)
+### Other things called Muse (not the one meant)
 
 - **Muse** the thinking canvas (museapp.com): iPad/Mac only, not a chat product.
 - **Sudowrite Muse**: a fiction-writing model inside Sudowrite.
 - **Unity Muse**, **Microsoft Muse** (game model), **MuseScore**, the Arch `muse` package (a DAW), the Muse EEG headband.
 
-None of these sits naturally next to "Grok Bot", so Meta's Muse is the working assumption.
 
 ## 2. Options, lightest to heaviest
 
@@ -73,14 +72,16 @@ Option A/B is different in kind: it is Chromium itself, signed in the normal way
 
 ## 4. Open questions for Nick
 
-1. Is "Muse" Meta's agent at muse.ai? Everything above assumes so.
-2. Which plan is Nick on (Free, Power, Maximum)? Is pay-per-token API use on top acceptable for phase 2?
-3. Is Nick in the US? The Meta Model API preview is reported US-only.
-4. What matters most: a dedicated window, a fast one-shot prompt, or terminal use? This decides whether phase 2 is worth doing.
-5. Does Nick rely on the agent features (memory, connectors, long-running tasks)? If so, only the web app delivers them and phase 2 is a side tool.
-6. Preferred keybind, and window behaviour: fixed workspace, or floating toggle?
-7. Should Muse share the main Chromium profile, or get an isolated profile (cleaner separation, one extra sign-in)?
-8. Is Muse Code of interest, given it may be billed separately?
+Answered: Muse is Meta's agent; Nick has a paid subscription; he is in the US, so the Meta Model API preview is available to him.
+
+Since Nick wants the Muse app itself (the agent, with his account and history), the web app in phase 1 is the real answer on Linux. Phase 2 is a side tool at most, because the API is billed per token separately from the subscription and does not reach his agent account.
+
+Still open:
+
+1. Preferred keybind, and window behaviour: fixed workspace, or floating toggle?
+2. Should Muse share the main Chromium profile, or get an isolated profile (cleaner separation, one extra sign-in)?
+3. Is a one-shot quick prompt (phase 2) wanted at all, given it costs extra per token and is not the agent?
+4. Is Muse Code of interest, given it may be billed separately?
 
 ## 5. To verify before implementing
 
