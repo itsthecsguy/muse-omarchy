@@ -3,24 +3,25 @@
 # Muse (muse.ai) as a toggle window on Omarchy.
 #
 #   muse-omarchy toggle              show or hide the Muse window, starting it if needed
+#   muse-omarchy quit                close Muse to free its memory
 #   muse-omarchy set key "SUPER + M" bind the toggle to a key (empty string removes it)
 #   muse-omarchy set profile shared|isolated
 #   muse-omarchy show                print the current settings
+#   muse-omarchy setup               load Muse into your Hyprland config (toggle does this on first use)
+#   muse-omarchy remove              take it out of your Hyprland config again
 
 set -euo pipefail
 
-URL="https://muse.ai/"
-# Chromium names an --app window after the URL: chrome-<host>__<path>-<profile>.
-CLASS_PATTERN='^chrome-muse\.ai__'
-# Where the window waits while hidden. It is never shown there.
-HIDDEN="special:muse"
-
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/muse-omarchy"
 CONFIG="$CONFIG_DIR/config"
-PROFILE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/muse-omarchy/chromium-profile"
+HYPRLAND="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua"
+# The module sits beside this script's prefix: /usr/share for the package,
+# ~/.local/share for install.sh.
+MODULE="$(dirname "$(dirname "$(realpath "$0")")")/share/muse-omarchy/muse.lua"
+MARKER="-- muse-omarchy"
 
 usage() {
-  sed -n '3,8s/^# \{0,1\}//p' "$0"
+  sed -n '3,11s/^# \{0,1\}//p' "$0"
 }
 
 get() {
@@ -41,39 +42,42 @@ put() {
   mv "$CONFIG.tmp" "$CONFIG"
 }
 
-dispatch() {
-  hyprctl dispatch "$1" >/dev/null
+loaded() {
+  [[ $(hyprctl eval "if not muse_omarchy then error('missing') end" 2>&1) == ok ]]
 }
 
-toggle() {
-  local window address workspace active current
+# Hyprland config is per user, so a system package cannot hook itself in. This
+# adds one line to the user's hyprland.lua. pcall keeps the config loading
+# cleanly if the package is later removed without `muse-omarchy remove`.
+setup() {
+  [[ -f $MODULE ]] || { echo "muse-omarchy: $MODULE is missing; reinstall." >&2; exit 1; }
+  [[ -f $HYPRLAND ]] || { echo "muse-omarchy: no $HYPRLAND; this needs Omarchy's Lua Hyprland config." >&2; exit 1; }
 
-  window=$(hyprctl clients -j | jq -c --arg p "$CLASS_PATTERN" '[.[] | select(.class | test($p))][0] // empty')
-
-  if [[ -z $window ]]; then
-    # Opens as an ordinary tiled window on the current workspace.
-    if [[ $(get profile shared) == isolated ]]; then
-      mkdir -p "$PROFILE_DIR"
-      exec omarchy-launch-webapp "$URL" "--user-data-dir=$PROFILE_DIR"
-    fi
-    exec omarchy-launch-webapp "$URL"
+  local line="pcall(dofile, \"$MODULE\") $MARKER"
+  if ! grep -qxF -- "$line" "$HYPRLAND"; then
+    cp "$HYPRLAND" "$HYPRLAND.bak.$(date +%s)"
+    sed -i "/ $MARKER\$/d" "$HYPRLAND"
+    printf '%s\n' "$line" >>"$HYPRLAND"
   fi
 
-  address=$(jq -r '.address' <<<"$window")
-  workspace=$(jq -r '.workspace.name' <<<"$window")
-  active=$(hyprctl activewindow -j | jq -r '.address // empty')
-  current=$(hyprctl activeworkspace -j | jq -r '.id')
+  hyprctl reload >/dev/null 2>&1 || true
+  loaded || { echo "muse-omarchy: Hyprland did not load $MODULE. Check 'hyprctl configerrors'." >&2; exit 1; }
+}
 
-  if [[ $workspace == "$HIDDEN" ]]; then
-    # Hidden: bring it to the workspace in view, where it tiles like any window.
-    dispatch "hl.dsp.window.move({ workspace = \"$current\", window = \"address:$address\" })"
-    dispatch "hl.dsp.focus({ window = \"address:$address\" })"
-  elif [[ $address == "$active" ]]; then
-    dispatch "hl.dsp.window.move({ workspace = \"$HIDDEN\", follow = false, window = \"address:$address\" })"
-  else
-    # Open but not focused, perhaps on another workspace: go to it.
-    dispatch "hl.dsp.focus({ window = \"address:$address\" })"
+remove() {
+  # A Muse parked on the hidden workspace would be stranded once the toggle is gone.
+  loaded && hyprctl eval "muse_omarchy.reveal()" >/dev/null 2>&1 || true
+  if [[ -f $HYPRLAND ]] && grep -q -- " $MARKER\$" "$HYPRLAND"; then
+    cp "$HYPRLAND" "$HYPRLAND.bak.$(date +%s)"
+    sed -i "/ $MARKER\$/d" "$HYPRLAND"
   fi
+  hyprctl reload >/dev/null 2>&1 || true
+}
+
+# The window logic lives in the Lua module, inside Hyprland. This asks it to run.
+call() {
+  loaded || setup
+  hyprctl eval "muse_omarchy.$1()" >/dev/null
 }
 
 set_option() {
@@ -89,7 +93,7 @@ set_option() {
     ;;
   profile)
     [[ $value == shared || $value == isolated ]] || { echo "profile must be 'shared' or 'isolated'" >&2; exit 1; }
-    echo "Close the Muse window for the profile change to take effect." >&2
+    echo "Takes effect the next time Muse starts: run 'muse-omarchy quit', then toggle." >&2
     ;;
   *)
     usage >&2
@@ -98,12 +102,18 @@ set_option() {
   esac
 
   put "$name" "$value"
-  # The key is read by hypr/muse.lua when Hyprland loads its config.
-  hyprctl reload >/dev/null 2>&1 || true
+  # The key is bound when Hyprland loads its config; the profile is read at launch.
+  if [[ $name == key ]]; then
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
 }
 
 case ${1:-} in
-toggle) toggle ;;
+toggle) call toggle ;;
+quit) call quit ;;
+reveal) call reveal ;;
+setup) setup ;;
+remove) remove ;;
 set) set_option "${2:-}" "${3-}" ;;
 show)
   echo "key     = $(get key '(none)')"

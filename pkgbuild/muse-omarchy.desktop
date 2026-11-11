@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Muse
+Comment=Meta's Muse AI agent in its own toggle window (unofficial)
+Exec=muse-omarchy toggle
+Icon=muse-omarchy
+Terminal=false
+Categories=Network;
+Keywords=Muse;Meta;AI;Agent;
+StartupWMClass=chrome-muse.ai__-Default
