@@ -1,0 +1,15 @@
+pkgbase = muse-omarchy
+	pkgdesc = Meta's Muse AI agent as a toggle window on Omarchy (unofficial)
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/itsthecsguy/muse-omarchy
+	arch = any
+	license = MIT
+	depends = bash
+	depends = hyprland
+	depends = omarchy
+	optdepends = chromium: the default browser Muse runs in
+	source = muse-omarchy-0.1.0.tar.gz::https://github.com/itsthecsguy/muse-omarchy/archive/refs/tags/v0.1.0.tar.gz
+	sha256sums = 581d82ef13a14a4da5e6200372da6401e4645759c58f315bbb40704307ef2ef2
+
+pkgname = muse-omarchy
