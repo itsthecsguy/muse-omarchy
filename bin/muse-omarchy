@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# Muse (muse.ai) as a toggle window on Omarchy.
+#
+#   muse-omarchy toggle              show or hide the Muse window, starting it if needed
+#   muse-omarchy quit                close Muse to free its memory
+#   muse-omarchy set key "SUPER + M" bind the toggle to a key (empty string removes it)
+#   muse-omarchy set profile shared|isolated
+#   muse-omarchy show                print the current settings
+#   muse-omarchy setup               load Muse into your Hyprland config (toggle does this on first use)
+#   muse-omarchy remove              take it out of your Hyprland config again
+
+set -euo pipefail
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/muse-omarchy"
+CONFIG="$CONFIG_DIR/config"
+HYPRLAND="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.lua"
+# The module sits beside this script's prefix: /usr/share for the package,
+# ~/.local/share for install.sh.
+MODULE="$(dirname "$(dirname "$(realpath "$0")")")/share/muse-omarchy/muse.lua"
+MARKER="-- muse-omarchy"
+
+usage() {
+  sed -n '3,11s/^# \{0,1\}//p' "$0"
+}
+
+get() {
+  local value=""
+  [[ -f $CONFIG ]] && value=$(sed -n "s/^$1[[:space:]]*=[[:space:]]*//p" "$CONFIG" | tail -n1)
+  printf '%s\n' "${value:-${2:-}}"
+}
+
+put() {
+  mkdir -p "$CONFIG_DIR"
+  touch "$CONFIG"
+  local rest
+  rest=$(grep -v "^$1[[:space:]]*=" "$CONFIG" || true)
+  {
+    [[ -n $rest ]] && printf '%s\n' "$rest"
+    printf '%s = %s\n' "$1" "$2"
+  } >"$CONFIG.tmp"
+  mv "$CONFIG.tmp" "$CONFIG"
+}
+
+loaded() {
+  [[ $(hyprctl eval "if not muse_omarchy then error('missing') end" 2>&1) == ok ]]
+}
+
+# Hyprland config is per user, so a system package cannot hook itself in. This
+# adds one line to the user's hyprland.lua. pcall keeps the config loading
+# cleanly if the package is later removed without `muse-omarchy remove`.
+setup() {
+  [[ -f $MODULE ]] || { echo "muse-omarchy: $MODULE is missing; reinstall." >&2; exit 1; }
+  [[ -f $HYPRLAND ]] || { echo "muse-omarchy: no $HYPRLAND; this needs Omarchy's Lua Hyprland config." >&2; exit 1; }
+
+  local line="pcall(dofile, \"$MODULE\") $MARKER"
+  if ! grep -qxF -- "$line" "$HYPRLAND"; then
+    cp "$HYPRLAND" "$HYPRLAND.bak.$(date +%s)"
+    sed -i "/ $MARKER\$/d" "$HYPRLAND"
+    printf '%s\n' "$line" >>"$HYPRLAND"
+  fi
+
+  hyprctl reload >/dev/null 2>&1 || true
+  loaded || { echo "muse-omarchy: Hyprland did not load $MODULE. Check 'hyprctl configerrors'." >&2; exit 1; }
+}
+
+remove() {
+  # A Muse parked on the hidden workspace would be stranded once the toggle is gone.
+  loaded && hyprctl eval "muse_omarchy.reveal()" >/dev/null 2>&1 || true
+  if [[ -f $HYPRLAND ]] && grep -q -- " $MARKER\$" "$HYPRLAND"; then
+    cp "$HYPRLAND" "$HYPRLAND.bak.$(date +%s)"
+    sed -i "/ $MARKER\$/d" "$HYPRLAND"
+  fi
+  hyprctl reload >/dev/null 2>&1 || true
+}
+
+# The window logic lives in the Lua module, inside Hyprland. This asks it to run.
+call() {
+  loaded || setup
+  hyprctl eval "muse_omarchy.$1()" >/dev/null
+}
+
+set_option() {
+  local name="${1:-}" value="${2-}"
+
+  case $name in
+  key)
+    if [[ -n $value ]] && omarchy menu keybindings --print 2>/dev/null |
+      awk -F'→' '{ gsub(/[ +]+/, " ", $1); print toupper($1) }' |
+      grep -qxF "$(tr -s ' +' ' ' <<<"$value" | tr '[:lower:]' '[:upper:]') "; then
+      echo "Note: '$value' already has a binding; both will run. Check 'omarchy menu keybindings --print'." >&2
+    fi
+    ;;
+  profile)
+    [[ $value == shared || $value == isolated ]] || { echo "profile must be 'shared' or 'isolated'" >&2; exit 1; }
+    echo "Takes effect the next time Muse starts: run 'muse-omarchy quit', then toggle." >&2
+    ;;
+  *)
+    usage >&2
+    exit 1
+    ;;
+  esac
+
+  put "$name" "$value"
+  # The key is bound when Hyprland loads its config; the profile is read at launch.
+  if [[ $name == key ]]; then
+    hyprctl reload >/dev/null 2>&1 || true
+  fi
+}
+
+case ${1:-} in
+toggle) call toggle ;;
+quit) call quit ;;
+reveal) call reveal ;;
+setup) setup ;;
+remove) remove ;;
+set) set_option "${2:-}" "${3-}" ;;
+show)
+  echo "key     = $(get key '(none)')"
+  echo "profile = $(get profile shared)"
+  ;;
+*)
+  usage
+  [[ ${1:-} == -h || ${1:-} == --help ]] || exit 1
+  ;;
+esac

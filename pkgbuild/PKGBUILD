@@ -1,0 +1,22 @@
+# Builds from this checkout: run `makepkg -fsi` in this directory.
+# PUBLISHING.md has the variant that builds from a release tarball.
+pkgname=muse-omarchy
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Meta's Muse AI agent as a toggle window on Omarchy (unofficial)"
+arch=('any')
+url='https://github.com/itsthecsguy/muse-omarchy'
+license=('MIT')
+depends=('bash' 'hyprland' 'omarchy')
+optdepends=('chromium: the default browser Muse runs in')
+source=()
+sha256sums=()
+
+package() {
+  cd "$startdir/.."
+  install -Dm755 bin/muse-omarchy "$pkgdir/usr/bin/muse-omarchy"
+  install -Dm644 share/muse.lua "$pkgdir/usr/share/muse-omarchy/muse.lua"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 pkgbuild/muse-omarchy.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/muse-omarchy.svg"
+  install -Dm644 pkgbuild/muse-omarchy.desktop "$pkgdir/usr/share/applications/muse-omarchy.desktop"
+}
