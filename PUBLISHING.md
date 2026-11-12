@@ -1,6 +1,6 @@
 # Publishing muse-omarchy
 
-Researched 2026-11-10. Nothing here has been done yet: no tag, no release, no upstream PR.
+Status on 2026-11-11: the repo is public and [v0.1.0](https://github.com/itsthecsguy/muse-omarchy/releases/tag/v0.1.0) is released. The AUR and Omarchy's own repo are not done yet.
 
 ## Is "an Omarchy app" a thing?
 
@@ -22,23 +22,17 @@ Recommended order: GitHub release first, since both other routes build from it. 
 
 ## Steps
 
-1. **Make the GitHub repo public.** It is private today, and every route needs a public source.
-2. **Confirm the license.** `LICENSE` is MIT with "thecsguy" as the holder, added as a placeholder so the package builds. Change the name or the license if that is wrong.
-3. **Tag and release:** tag `v0.1.0` and create a GitHub release.
-4. **Switch the recipe to the release tarball** for publishing (the in-repo `PKGBUILD` builds from the checkout):
+Done: the repo is public, the license is MIT, and `v0.1.0` is tagged and released. `aur/PKGBUILD` is the recipe for the next two steps; it builds from the release tarball and has been test-built.
+
+1. **AUR.** Needs an AUR account with an SSH key registered. Then:
 
    ```sh
-   source=("$pkgname-$pkgver.tar.gz::https://github.com/itsthecsguy/muse-omarchy/archive/refs/tags/v$pkgver.tar.gz")
-   sha256sums=('...')   # fill with updpkgsums
-
-   package() {
-     cd "$pkgname-$pkgver"
-     # same install lines as pkgbuild/PKGBUILD
-   }
+   git clone ssh://aur@aur.archlinux.org/muse-omarchy.git aur-muse-omarchy
+   cp aur/PKGBUILD aur/.SRCINFO aur-muse-omarchy/
+   cd aur-muse-omarchy && git add PKGBUILD .SRCINFO && git commit -m "Initial release 0.1.0" && git push
    ```
 
-5. **AUR:** create the `muse-omarchy` AUR repo, push that `PKGBUILD` and a generated `.SRCINFO`.
-6. **Omarchy repo:** fork `omacom/omarchy-pkgs`, run `bin/add-package muse-omarchy --local --scaffold`, put the recipe in `pkgbuilds/muse-omarchy/`, and set `.omarchy/package.json` so new releases sync without another PR:
+2. **Omarchy repo.** Open an issue on `omacom/omarchy-pkgs` asking whether they would take it. If yes: fork it, run `bin/add-package muse-omarchy --local --scaffold`, put `aur/PKGBUILD` in `pkgbuilds/muse-omarchy/`, and set `.omarchy/package.json` so new releases sync without another PR:
 
    ```json
    {
@@ -49,7 +43,9 @@ Recommended order: GitHub release first, since both other routes build from it. 
 
    Their README covers the local build and checks to run before opening the PR.
 
-## Things to settle before going public
+For a later release: bump `pkgver` in both recipes, tag, release, then refresh the checksum with `updpkgsums` and regenerate `aur/.SRCINFO` with `makepkg --printsrcinfo`.
+
+## Things to keep in mind
 
 - **Name and trademark.** "Muse" and its logo belong to Meta. The package is named `muse-omarchy`, describes itself as unofficial, and ships its own plain icon instead of Meta's. Keep it that way, and say "not affiliated with Meta" in the README.
 - **Terms of service.** This opens the real muse.ai site in the user's own browser and automates nothing, which is the same as Omarchy's built-in web apps. That is the reason it is safe to share; see PLAN.md.

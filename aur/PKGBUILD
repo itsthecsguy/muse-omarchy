@@ -1,0 +1,23 @@
+# Maintainer: thecsguy <itsthecsguy at users dot noreply dot github dot com>
+# Builds from the GitHub release tarball. This is the recipe to publish to the
+# AUR or to omacom/omarchy-pkgs.
+pkgname=muse-omarchy
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Meta's Muse AI agent as a toggle window on Omarchy (unofficial)"
+arch=('any')
+url='https://github.com/itsthecsguy/muse-omarchy'
+license=('MIT')
+depends=('bash' 'hyprland' 'omarchy')
+optdepends=('chromium: the default browser Muse runs in')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('581d82ef13a14a4da5e6200372da6401e4645759c58f315bbb40704307ef2ef2')
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 bin/muse-omarchy "$pkgdir/usr/bin/muse-omarchy"
+  install -Dm644 share/muse.lua "$pkgdir/usr/share/muse-omarchy/muse.lua"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 pkgbuild/muse-omarchy.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/muse-omarchy.svg"
+  install -Dm644 pkgbuild/muse-omarchy.desktop "$pkgdir/usr/share/applications/muse-omarchy.desktop"
+}
